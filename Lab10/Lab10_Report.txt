@@ -1,0 +1,35 @@
+======================================================
+COE67-222 Operating Systems - Lab 10 Report (Final)
+Name: Mr. Tanaphat Chuparat
+Student ID: 67120618
+======================================================
+
+1. The Role of the Operating System:
+In this mini-project, our Python script simulated the major responsibilities of an Operating System. Match the specific code behavior in ultimate_cluster_os.py to the corresponding OS concept you learned throughout the semester:
+
+- File System & Permissions (Lab 9):
+Ans: Simulated by the verification check `if not os.path.exists(dataset_path):`. Before committing valuable cluster resources (RAM and GPUs), the OS verifies file existence and access privileges. In our terminal execution, when Workload_D_Hacker submitted a job referencing 'secret_keys.txt', the OS immediately blocked it with `X [Workload_D_Hacker] FAILED: Dataset 'secret_keys.txt' not found or Permission Denied.` and aborted the task without allocating any hardware resources.
+
+- Memory Management (Labs 5/6):
+Ans: Simulated by the memory checking loop `while True: with self.ram_lock: if self.available_ram_gb >= req_ram: ... break; time.sleep(0.5)`. The OS prevents memory overcommitment and thrashing by gating processes until sufficient unallocated physical RAM is available. In our live dashboard, when Workload A (40GB), Workload B (16GB), and Workload C (2GB) executed concurrently, the allocated RAM reached 58GB (leaving 6/64 GB available). Because total allocations never exceeded physical RAM limits, the OS completely avoided page faults, swap file thrashing, and Out-Of-Memory crashes.
+
+- Concurrency & Deadlocks (Labs 3/4):
+Ans: Simulated by enforcing the Resource Hierarchy rule through `sorted_gpus = sorted(req_gpus)`. Workload_A originally requested GPUs in unordered sequence `[2, 1, 0]`, but the OS sorted the request into `[0, 1, 2]` before acquiring the respective locks. By forcing every concurrent worker thread to request and lock shared hardware resources strictly in ascending numerical order, the OS breaks the Circular Wait condition (Coffman condition), mathematically eliminating deadlock possibilities where tasks cross-wait for locked GPUs.
+
+2. Hardware Utilization:
+Look at the output of your Live Dashboard. Explain how the OS successfully ran Workload A (LLaMA Training), Workload B (Preprocessing), and Workload C (Inference) AT THE SAME TIME without crashing. Why didn't they block each other?
+
+Ans: 
+The live dashboard demonstrated high concurrency (Active Jobs: 3) due to dynamic multi-resource partitioning:
+1. Memory Separation: The cluster holds 64 GB of total physical RAM. Workload A took 40 GB, Workload B took 16 GB, and Workload C took 2 GB, totaling 58 GB. Since 58 GB <= 64 GB, all three workloads comfortably fit within physical memory boundaries simultaneously without starving each other.
+2. Non-Overlapping Compute Subsets:
+   - Workload A acquired locks for GPUs 0, 1, and 2 for distributed tensor training.
+   - Workload B is purely CPU- and I/O-bound, requiring 0 GPUs (`req_gpus=[]`). It ran on the host CPU in parallel without competing for GPU locks.
+   - Workload C needed only 1 GPU and seized the sole remaining unallocated GPU (GPU 3), which was in the IDLE state.
+Because memory remained within safe limits and no two workloads competed for the exact same GPU locks at the same time, the OS scheduler ran all three diverse workloads concurrently without blocking or resource collision.
+
+3. Course Reflection (AI Engineering Context):
+You are now applying for a role as a Machine Learning Operations (MLOps) Engineer. Write a short paragraph explaining how understanding Operating Systems (Process queues, RAM/Virtual Memory limits, Deadlock avoidance, File systems) gives you an advantage over a programmer who only knows how to write basic Python/PyTorch scripts.
+
+Ans: 
+Understanding OS internals provides a decisive competitive advantage for an MLOps Engineer because in large-scale AI infrastructure, production bottlenecks and cost overruns stem from systems-level constraints rather than model math. A developer who only understands PyTorch scripts will be unable to resolve mysterious Out-Of-Memory (OOM) crashes, GPU starvation, multi-node deadlocks, or slow I/O pipelines. With OS knowledge, an engineer understands how to size batch sizes to prevent memory thrashing, package image datasets into sequential binary formats (like TFRecord) to eliminate random disk seek overhead, enforce strict lock hierarchies to avoid distributed training deadlocks, and apply kernel-level file permissions to safeguard multi-million-dollar production model weights. This foundational systems insight is essential for building scalable, highly available AI cluster pipelines on Kubernetes and Slurm.
