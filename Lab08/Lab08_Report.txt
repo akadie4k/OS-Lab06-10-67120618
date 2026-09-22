@@ -1,0 +1,29 @@
+======================================================
+COE67-222 Operating Systems - Lab 08 Report
+Name: Mr. Tanaphat Chuparat
+Student ID: 67120618
+======================================================
+
+1. Disk Scheduling (Phase 2):
+Looking at the output of disk_scheduler.py, why did the SCAN algorithm result in a significantly lower "Total Head Movement" compared to FCFS? Explain the logic behind the Elevator behavior.
+
+Ans: 
+- Total Head Movement Comparison: Based on the actual run of disk_scheduler.py, FCFS moved the disk head across 640 cylinders, whereas SCAN moved it only 331 cylinders (a reduction of nearly half).
+- Why SCAN performed better: Under FCFS, requests were processed strictly in the order they arrived, causing the disk head to jump erratically back and forth across distant tracks (53 -> 98 -> 183 -> 37 -> 122 -> 14 -> 124 -> 65 -> 67). This thrashing across tracks creates massive seek time. In contrast, SCAN sorted the pending requests by cylinder position, allowing the head to sweep continuously in one direction without back-and-forth oscillation.
+- The Elevator Logic: SCAN behaves like a commercial passenger elevator. It moves continuously in one direction (sweeping upward towards the highest track, 199), servicing every requested cylinder in its path. Once it reaches the end, it reverses direction to service the remaining requests on the downward sweep. This creates a smooth, single-pass motion that eliminates random head jumping.
+
+2. I/O Bound Concept:
+If an Operating System is described as being "I/O Bound" during a task, what does that actually mean for the CPU? Is the CPU at 100% usage or is it mostly idle? Why?
+
+Ans: 
+- Meaning for the CPU: Being "I/O Bound" means the overall execution speed is bottlenecked by the slow transfer rates of secondary storage (Disk I/O) rather than processor compute limits.
+- CPU Usage Status: The CPU is mostly idle (low CPU utilization) rather than running at 100%.
+- Reason: Secondary storage speeds are thousands of times slower than RAM and CPU registers. Whenever an application requests file read/write operations, the OS transitions the process from the "Running" state into an "I/O Wait" (Blocked) state. Because the process cannot proceed until data blocks arrive from the storage device, the CPU has no active instructions to execute for that task and remains mostly idle waiting for the disk controller to finish.
+
+3. AI Industry Connection (Phase 3):
+Explain why storing an AI image dataset as 1,000,000 separate '.jpg' files causes high I/O overhead and GPU starvation compared to packing them into a single sequential binary format (e.g., TFRecord, WebDataset, or HDF5).
+
+Ans: 
+- Overhead of 1,000,000 Individual Files: Reading one million distinct image files forces the OS to repeat costly filesystem operations one million times: resolving directory paths, performing Inode lookups, checking file permissions, issuing open/close system calls, and moving disk heads to fetch scattered blocks (Random I/O). In our benchmark, reading small separate files took 0.0222 seconds, compared to just 0.0010 seconds for the packed file (over 22 times slower).
+- GPU Starvation: GPUs compute tensor operations in milliseconds. When disk I/O cannot supply batches fast enough due to filesystem overhead, training stalls. The GPU is left waiting with 0% utilization, starved of data batches.
+- Advantages of Packed Sequential Binary Formats: By packaging images into a single container (like .tfrecord), the OS performs metadata lookups and file opening only once. Data is streamed in large contiguous blocks via high-speed Sequential I/O, saturating memory bandwidth and keeping the GPU continuously supplied with training batches without idling.
