@@ -1,0 +1,34 @@
+======================================================
+COE67-222 Operating Systems - Lab 09 Report
+Name: Mr. Tanaphat Chuparat
+Student ID: 67120618
+======================================================
+
+1. Inodes and Metadata:
+In the inode_inspector.py script, we printed the "Inode Number". If you rename the file using the Linux mv command, will the Inode Number change? Why or why not? (Hint: Think about how the OS separates the file name from the actual data).
+
+Ans: 
+The Inode Number (1455564 from our actual run) will NOT change; it remains exactly the same.
+In Unix/Linux filesystems, the operating system strictly separates the file name from the file metadata and data blocks:
+1. The Inode is the underlying data structure that stores all critical metadata (file size of 46 bytes, permissions, ownership, timestamps, and physical data block pointers on disk).
+2. The file name is merely a text entry in a directory table (a mapping of string name -> Inode number).
+When renaming a file using the Linux `mv` command within the same filesystem, the OS only updates the directory record so the new filename points to the existing Inode. The actual Inode structure and data blocks on disk are not moved or reallocated, meaning the Inode number stays identical.
+
+2. POSIX Permissions:
+If you want to set a file's permission so that the Owner has Read/Write/Execute (7), the Group has Read/Execute (5), and Others have absolutely no access (0), what would be the 3-digit octal number you pass into os.chmod() ?
+
+Ans: 
+The 3-digit octal number is 750 (written as 0o750 in Python).
+Calculation Breakdown:
+- Owner (rwx): Read (4) + Write (2) + Execute (1) = 7
+- Group (r-x): Read (4) + Write (0) + Execute (1) = 5
+- Others (---): Read (0) + Write (0) + Execute (0) = 0
+When applied via `os.chmod(file, 0o750)`, the OS permission string becomes `-rwxr-x---`.
+
+3. The AI Context:
+Why is it safer to rely on Operating System file permissions (like os.chmod(0o444)) to protect production model weights rather than relying solely on application-level logic or Python try-except blocks?
+
+Ans: 
+Relying on OS-level file permissions is vastly safer because the OS Kernel operates at the lowest software layer and acts as the ultimate hardware gatekeeper:
+1. Kernel-Level Enforcement: File permissions are enforced by the Linux kernel during system calls (such as `open()` or `write()`). If model weights are set to Read-Only (`0o444`), any attempt to open the file in write mode (`open(file, "w")`) is immediately intercepted and blocked with a `PermissionError` by the kernel before any data touches the disk. This eliminates risks caused by buggy user code, missing exception handlers, or accidental overwrite scripts.
+2. Cross-Language and Multi-User Protection: In large AI training clusters, many engineers run diverse tools, shell scripts, C++ inference runtimes, and Python frameworks. Application-level logic only protects code written inside that specific script. OS permissions provide universal, platform-wide security that protects multi-million dollar model assets against accidental corruption across all processes and users.
